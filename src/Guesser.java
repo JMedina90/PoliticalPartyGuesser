@@ -1,5 +1,8 @@
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 
 public class Guesser {
@@ -7,6 +10,7 @@ public class Guesser {
     // Stores the party scores.
     private final Map<String, Integer> partyScores = new HashMap<>();
     private final String[] PARTIES = {"Democrat", "Republican", "Libertarian", "Independent"};
+    private final String fileName = "data.txt"; // File to store response weights
 
     public Guesser() {
         // init each part to 0 weights.
@@ -18,10 +22,8 @@ public class Guesser {
     public void askQuestions() {
         Scanner scanner = new Scanner(System.in);
 
-        // Get the list of questions.
         List<Question> questions = getQuestions();
-
-        StringBuilder responses = new StringBuilder();
+        List<Integer> userResponses = new ArrayList<>(); // To store raw answer numbers
 
         for (int i = 0; i < questions.size(); i++) {
             // Get the current question and display it to the user.
@@ -46,23 +48,37 @@ public class Guesser {
                     System.out.println("Invalid option. Please select a number between 1 and " + q.getOptions().length + ".");
                 }
             }
-            // Appends the answer to later be saved in a .txt file
-            responses.append("Q").append(i + 1).append(": ").append(q.getOptions()[choice]).append("\n");
+
+            userResponses.add(choice + 1);
 
             // updates the party scores
             updatePartyScores(q, choice);
         }
 
-        String finalGuess = guessParty();
-        System.out.println("Final guess: " + finalGuess);
-
-        saveResponsesToFile(finalGuess, responses.toString());
 
         System.out.println("Which political party do you actually affiliate with?");
         System.out.println("1. Democrat\n2. Republican\n3. Libertarian\n4. Independent");
-        int actualPartyIndex = scanner.nextInt() - 1;
 
-        System.out.println("Thank you for your response.");
+        int actualPartyIndex = scanner.nextInt() - 1;
+        String actualParty = PARTIES[actualPartyIndex];
+
+        // guess the party based on this session
+        String finalGuess = guessParty(partyScores);
+        System.out.println("Your party affiliation is: " + finalGuess);
+
+        // uses previous saved weights to guess the user's political party.
+        String storedPartyGuess = guessPartyFromStoredData();
+        System.out.println("The guessed party from stored data is: " + storedPartyGuess);
+
+        // save the responses and weights to the file
+        saveResponsesToFile(userResponses);
+
+        // compare if the weighted data is the save as the one in this survey.
+        if (actualParty.equals(storedPartyGuess)) {
+            System.out.println("The stored data prediction matches your declared party.");
+        } else {
+            System.out.println("The stored data prediction does not match your declared party.");
+        }
 
     }
 
@@ -178,98 +194,6 @@ public class Guesser {
                 },
                 new int[][]{{10, 2, 0, 0}, {0, 10, 2, 0}, {0, 5, 10, 5}, {0, 0, 2, 5}}));
 
-        questions.add(new Question(
-                "What is your view on foreign policy?",
-                new String[]{
-                        "Increase diplomatic engagement",
-                        "Increase military spending",
-                        "Reduce foreign interventions",
-                        "Keep current policies"
-                },
-                new int[][]{{10, 3, 0, 0}, {5, 10, 0, 0}, {0, 2, 10, 2}, {0, 0, 2, 5}}));
-
-        questions.add(new Question(
-                "What is your view on government surveillance?",
-                new String[]{
-                        "Reduce surveillance",
-                        "Maintain current levels",
-                        "Abolish government surveillance",
-                        "Increase surveillance for safety"
-                },
-                new int[][]{{10, 5, 0, 0}, {5, 10, 0, 0}, {0, 2, 10, 0}, {0, 0, 2, 5}}));
-
-        questions.add(new Question(
-                "How should the government handle drug policies?",
-                new String[]{
-                        "Legalize all drugs",
-                        "Legalize marijuana only",
-                        "Maintain current policies",
-                        "Oppose legalization"
-                },
-                new int[][]{{10, 0, 10, 0}, {5, 5, 0, 0}, {0, 8, 0, 2}, {0, 0, 0, 10}}));
-
-        questions.add(new Question(
-                "What is your stance on trade policies?",
-                new String[]{
-                        "Support free trade",
-                        "Support tariffs",
-                        "Reduce government involvement",
-                        "No opinion"
-                },
-                new int[][]{{10, 5, 10, 0}, {0, 10, 2, 0}, {0, 0, 10, 0}, {0, 0, 0, 5}}));
-
-        questions.add(new Question(
-                "What is your view on environmental regulations?",
-                new String[]{
-                        "Support stronger regulations",
-                        "Support current regulations",
-                        "Oppose regulations",
-
-                        "No opinion"
-                },
-                new int[][]{{10, 5, 0, 0}, {5, 10, 0, 0}, {0, 2, 10, 0}, {0, 0, 0, 5}}));
-
-        questions.add(new Question(
-                "How do you feel about government subsidies for businesses?",
-                new String[]{
-                        "Support increased subsidies",
-                        "Support targeted subsidies",
-                        "Oppose all subsidies",
-                        "Maintain current policies"
-                },
-                new int[][]{{10, 5, 0, 0}, {5, 8, 0, 0}, {0, 2, 10, 0}, {0, 0, 2, 5}}));
-
-        questions.add(new Question(
-                "What is your view on public education funding?",
-                new String[]{
-                        "Increase funding for public schools",
-                        "Support school choice programs",
-                        "Reduce government role in education",
-                        "Maintain current funding"
-                },
-                new int[][]{{10, 0, 0, 0}, {0, 10, 2, 0}, {0, 5, 10, 5}, {0, 0, 2, 5}}));
-
-        questions.add(new Question(
-                "How should the government address poverty?",
-                new String[]{
-                        "Expand social programs",
-                        "Encourage private sector solutions",
-                        "Limit government role",
-                        "No opinion"
-                },
-                new int[][]{{10, 2, 0, 0}, {5, 8, 2, 0}, {0, 5, 10, 0}, {0, 0, 2, 5}}));
-
-        questions.add(new Question(
-                "What is your view on minimum wage?",
-                new String[]{
-                        "Raise minimum wage",
-                        "Keep current wage",
-                        "Eliminate minimum wage",
-                        "No opinion"
-                },
-                new int[][]{{10, 0, 0, 0}, {5, 10, 0, 0}, {0, 5, 10, 5}, {0, 0, 2, 5}}));
-
-
         return questions;
     }
 
@@ -283,11 +207,48 @@ public class Guesser {
         }
     }
 
-    public String guessParty() {
+    // method to retrieve stored data
+    public String guessPartyFromStoredData() {
+        Map<String, Integer> storedScores = new HashMap<>();
+        for (String party : PARTIES) {
+            storedScores.put(party, 0);
+        }
+
+        try {
+            // read the file line by line
+            File file = new File(fileName);
+            if (!file.exists() || file.length() == 0) {
+                System.out.println("No previous data recorded.");
+                return null; // No data to process
+            }
+
+            List<String> lines = Files.readAllLines(Paths.get(fileName));
+
+            for (String line : lines) {
+                // parse the line of weights
+                String[] weights = line.split(",");
+                if (weights.length != PARTIES.length) {
+                    System.err.println("Skipping malformed line: " + line);
+                    continue; // skip lines that don't have exactly 4 values
+                }
+                for (int i = 0; i < weights.length; i++) {
+                    int weight = Integer.parseInt(weights[i]);
+                    storedScores.put(PARTIES[i], storedScores.get(PARTIES[i]) + weight);
+                }
+            }
+
+        } catch (IOException e) {
+            System.err.println("Error reading from file: " + e.getMessage());
+        }
+
+        return guessParty(storedScores);
+    }
+
+    public String guessParty(Map<String, Integer> scores) {
         String bestGuess = "";
         int highestScore = Integer.MIN_VALUE; // keeps track of the highest score when doing the for loop
 
-        for (Map.Entry<String, Integer> entry : partyScores.entrySet()) {
+        for (Map.Entry<String, Integer> entry : scores.entrySet()) {
             // Check if the current party's score is higher than the current highest score
             if (entry.getValue() > highestScore) {
                 highestScore = entry.getValue();
@@ -299,13 +260,26 @@ public class Guesser {
     }
 
     // save responses to a file corresponding to the guessed party
-    public void saveResponsesToFile(String party, String responses) {
-        String fileName = party + ".txt";
+    public void saveResponsesToFile(List<Integer> choices) {
+        File file = new File(fileName);
 
-        try (FileWriter writer = new FileWriter(fileName, true)) { // append to the file
-            writer.write("Survey responses:\n");
-            writer.write(responses);
-            writer.write("------\n");
+
+        try (FileWriter writer = new FileWriter(fileName, true)) {
+
+            // create file if it doesn't exists.
+            if (!file.exists()) {
+                file.createNewFile();
+                System.out.println("File 'data.txt' created.");
+            }
+
+            StringBuilder weightLine = new StringBuilder();
+            for (int i = 0; i < PARTIES.length; i++) {
+                weightLine.append(partyScores.get(PARTIES[i]));
+                if (i < PARTIES.length - 1) {
+                    weightLine.append(",");
+                }
+            }
+            writer.write(weightLine.toString() + "\n");
             System.out.println("Responses saved to " + fileName);
         } catch (IOException e) {
             System.err.println("Error writing to file: " + e.getMessage());
